@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>GBRoadGen v11 - GoreBox Rally Road Generator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<style>
+  body {font-family:system-ui,sans-serif;background:#0d1117;color:#e6edf3;padding:24px;max-width:1000px;margin:0 auto;}
+  h1 {color:#ff5555;margin-bottom:0.4em;}
+  .header {display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+  .header h1 {margin:0;}
+  .version {font-size:0.95rem;color:#8b949e;}
+  .preview-container {background:#11151c;border:1px solid #30363d;border-radius:8px;padding:12px;height:440px;margin:32px 0;overflow:hidden;}
+  canvas {width:100%;height:100%;image-rendering:pixelated;}
+  .controls {display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin:1.5em 0;}
+  .control-item {background:#161b22;padding:16px;border-radius:10px;border:1px solid #30363d;}
+  .control-item.double {display:flex;align-items:center;gap:10px;}
+  .control-item.double input[type="range"] {flex:1;}
+  .control-item.double input[type="number"] {width:90px;background:#0d1117;color:#e6edf3;border:1px solid #30363d;border-radius:6px;padding:8px;font-size:1rem;}
+  label {display:block;margin-bottom:8px;font-size:0.95rem;color:#8b949e;}
+  .value {font-family:monospace;color:#58a6ff;font-size:1.05rem;}
+  .start-pos {display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .start-pos input {background:#0d1117;color:#e6edf3;border:1px solid #30363d;border-radius:6px;padding:8px;}
+  textarea {width:100%;height:340px;background:#0d1117;color:#00ff9d;font-family:monospace;padding:14px;border:1px solid #30363d;border-radius:8px;margin:16px 0;resize:vertical;}
+  button {padding:12px 28px;font-size:1.1rem;margin:8px 8px 8px 0;cursor:pointer;border:none;border-radius:8px;color:white;}
+  #generate {background:#da3633;}
+  #download {background:#238636;}
+  #download:disabled {background:#444;cursor:not-allowed;}
+  .info {color:#8b949e;font-size:0.9rem;margin-top:1.2em;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>GBRoadGen v11</h1>
+  <div class="version">GoreBox Rally Road Generator</div>
+</div>
+
+<div class="controls">
+  <div class="control-item double">
+    <label>Length: <span class="value" id="val-count">100</span></label>
+    <input type="range" id="count-range" min="30" max="600" value="100">
+    <input type="number" id="count-number" min="30" max="600" step="1" value="100">
+  </div>
+
+  <div class="control-item double">
+    <label>Spacing: <span class="value" id="val-spacing">5.1</span> u</label>
+    <input type="range" id="spacing-range" min="4.0" max="7.0" step="0.1" value="5.1">
+    <input type="number" id="spacing-number" min="4.0" max="7.0" step="0.1" value="5.1">
+  </div>
+
+  <div class="control-item double">
+    <label>Plate scale: <span class="value" id="val-scale">1.0</span></label>
+    <input type="range" id="scale-range" min="0.4" max="2.8" step="0.1" value="1.0">
+    <input type="number" id="scale-number" min="0.4" max="2.8" step="0.1" value="1.0">
+  </div>
+
+  <div class="control-item double">
+    <label>Curve strength: <span class="value" id="val-curve">25</span>%</label>
+    <input type="range" id="curveStrength-range" min="0" max="60" step="1" value="25">
+    <input type="number" id="curveStrength-number" min="0" max="60" step="1" value="25">
+  </div>
+
+  <div class="control-item double">
+    <label>Corner sharpness: <span class="value" id="val-sharp">30</span>%</label>
+    <input type="range" id="sharpness-range" min="0" max="100" step="1" value="30">
+    <input type="number" id="sharpness-number" min="0" max="100" step="1" value="30">
+  </div>
+
+  <div class="control-item double">
+    <label>Hairpin chance: <span class="value" id="val-hairpin">5</span>%</label>
+    <input type="range" id="hairpinChance-range" min="0" max="25" step="1" value="5">
+    <input type="number" id="hairpinChance-number" min="0" max="25" step="1" value="5">
+  </div>
+
+  <div class="control-item double">
+    <label>Curve smoothness: <span class="value" id="val-smooth">92</span>%</label>
+    <input type="range" id="smoothness-range" min="70" max="98" step="1" value="92">
+    <input type="number" id="smoothness-number" min="70" max="98" step="1" value="92">
+  </div>
+
+  <div class="control-item double">
+    <label>Straight bias: <span class="value" id="val-straight">55</span>%</label>
+    <input type="range" id="straightBias-range" min="30" max="90" step="1" value="55">
+    <input type="number" id="straightBias-number" min="30" max="90" step="1" value="55">
+  </div>
+
+  <div class="control-item">
+    <label>Starting Position (X, Y, Z):</label>
+    <div class="start-pos">
+      <input type="number" id="start-x" placeholder="X (default 0)" step="0.1" value="">
+      <input type="number" id="start-y" placeholder="Y (default 42)" step="0.1" value="">
+      <input type="number" id="start-z" placeholder="Z (default 0)" step="0.1" value="">
+    </div>
+  </div>
+
+  <div class="control-item">
+    <label>Custom save name:</label>
+    <input type="text" id="saveName" placeholder="MyRallyTrack" value="">
+  </div>
+</div>
+
+<button id="generate">Generate New Track</button>
+<button id="download" disabled>Download .gbsave</button>
+
+<textarea id="output" readonly placeholder="JSON will appear here..."></textarea>
+
+<div class="preview-container">
+  <canvas id="preview"></canvas>
+</div>
+
+<div class="info">
+  • Leave starting position fields empty for default (0, 42, 0)<br>
+  • Scroll = zoom • Drag = pan • Green dot = start • Red dot = end
+</div>
+
+<script>
+// ────────────────────────────────────────────── Core generator
+let positions = [];
+
+function rand(min, max) { return min + Math.random() * (max - min); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+function yawQuat(deg) {
+  const rad = deg * Math.PI / 180;
+  const h = rad / 2;
+  return {x:0, y:Math.sin(h), z:0, w:Math.cos(h)};
+}
+
+function generateRallyRoad() {
+  const segs = +document.getElementById("count-range").value;
+  const baseStep = +document.getElementById("spacing-range").value;
+  const plateScale = +document.getElementById("scale-range").value;
+  const curveP = +document.getElementById("curveStrength-range").value / 100;
+  const sharpP = +document.getElementById("sharpness-range").value / 100;
+  const hairpinP = +document.getElementById("hairpinChance-range").value / 100;
+  const smoothP = +document.getElementById("smoothness-range").value / 100;
+  const straightP = +document.getElementById("straightBias-range").value / 100;
+
+  // Starting position
+  let startX = parseFloat(document.getElementById("start-x").value) || 0;
+  let startY = parseFloat(document.getElementById("start-y").value) || 42;
+  let startZ = parseFloat(document.getElementById("start-z").value) || 0;
+
+  const items = [];
+  positions = [];
+  let x = startX, z = startZ, yaw = 0, turnMomentum = 0;
+
+  positions.push({x, z});
+
+  for (let i = 0; i < segs; i++) {
+    let targetTurn = rand(-8, 8);
+    if (Math.random() < curveP) targetTurn *= 1.3 + sharpP * 2.4;
+    if (Math.random() < hairpinP && i > 20 && i < segs - 25) {
+      targetTurn = (80 + sharpP * 120) * (Math.random() < 0.5 ? 1 : -1);
+    }
+    if (Math.random() < straightP) targetTurn *= 0.1;
+
+    const smoothFactor = 0.05 + smoothP * 0.85;
+    turnMomentum = lerp(turnMomentum, targetTurn, smoothFactor);
+    turnMomentum = Math.max(-15, Math.min(15, turnMomentum));
+
+    yaw += turnMomentum;
+
+    const step = baseStep + rand(-0.4, 0.4);
+    x += Math.sin(yaw * Math.PI / 180) * step;
+    z += Math.cos(yaw * Math.PI / 180) * step;
+
+    positions.push({x, z});
+
+    items.push({
+      p: "SpawnAbles/Static/Concrete Plate Big",
+      pos: {x: Number(x.toFixed(2)), y: startY, z: Number(z.toFixed(2))},
+      s: {x:plateScale, y:plateScale, z:plateScale},
+      v: {x:0,y:0,z:0},
+      r: yawQuat(yaw + rand(-5, 5)),
+      k: false, uG: false,
+      gd: [], jd: [], ld: [], cd: [], wd: [], md: [],
+      t: "", fd: [], pf: []
+    });
+  }
+
+  return {
+    version: 1,
+    thumbnailPath: `/storage/emulated/0/Android/data/com.F2Games.GBDE/files/Saves/GBRoadGen_${Date.now()}_thumb.png`,
+    Items: items
+  };
+}
+
+// ────────────────────────────────────────────── Preview (same as before)
+const canvas = document.getElementById("preview");
+const ctx = canvas.getContext("2d");
+let offsetX = 0, offsetZ = 0, zoom = 1;
+let isDragging = false, lastMouseX, lastMouseY;
+
+function drawPreview() {
+  const w = canvas.width = canvas.clientWidth * devicePixelRatio;
+  const h = canvas.height = canvas.clientHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  ctx.fillStyle = "#0a0e14";
+  ctx.fillRect(0,0,canvas.clientWidth,canvas.clientHeight);
+
+  if (positions.length < 2) return;
+
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  positions.forEach(p => {
+    minX = Math.min(minX, p.x);
+    maxX = Math.max(maxX, p.x);
+    minZ = Math.min(minZ, p.z);
+    maxZ = Math.max(maxZ, p.z);
+  });
+
+  const rangeX = maxX - minX || 200;
+  const rangeZ = maxZ - minZ || 200;
+  const scale = Math.min(canvas.clientWidth / rangeX, canvas.clientHeight / rangeZ) * 0.8 * zoom;
+
+  ctx.save();
+  ctx.translate(canvas.clientWidth/2, canvas.clientHeight/2);
+  ctx.scale(scale, scale);
+  ctx.translate(-((minX+maxX)/2) + offsetX, -((minZ+maxZ)/2) + offsetZ);
+
+  ctx.beginPath();
+  ctx.moveTo(positions[0].x, positions[0].z);
+  for (let i = 1; i < positions.length; i++) ctx.lineTo(positions[i].x, positions[i].z);
+  ctx.strokeStyle = "#4fc3f7";
+  ctx.lineWidth = 6 / scale;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.stroke();
+
+  ctx.fillStyle = "#88ccff";
+  positions.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.z, 4 / scale, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  ctx.fillStyle = "#66ff99";
+  ctx.beginPath();
+  ctx.arc(positions[0].x, positions[0].z, 12 / scale, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = "#ff6666";
+  ctx.beginPath();
+  ctx.arc(positions[positions.length-1].x, positions[positions.length-1].z, 12 / scale, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+canvas.addEventListener("wheel", e => {
+  e.preventDefault();
+  zoom *= e.deltaY < 0 ? 1.15 : 0.87;
+  zoom = Math.max(0.15, Math.min(15, zoom));
+  drawPreview();
+});
+
+canvas.addEventListener("mousedown", e => {
+  isDragging = true;
+  lastMouseX = e.offsetX;
+  lastMouseY = e.offsetY;
+});
+canvas.addEventListener("mousemove", e => {
+  if (!isDragging) return;
+  offsetX += (e.offsetX - lastMouseX) / zoom;
+  offsetZ += (e.offsetY - lastMouseY) / zoom;
+  lastMouseX = e.offsetX;
+  lastMouseY = e.offsetY;
+  drawPreview();
+});
+["mouseup","mouseleave"].forEach(ev => canvas.addEventListener(ev, () => isDragging = false));
+
+// ────────────────────────────────────────────── UI & Sync
+const output = document.getElementById("output");
+const genBtn = document.getElementById("generate");
+const dlBtn = document.getElementById("download");
+let lastJson = "";
+
+function generate() {
+  const data = generateRallyRoad();
+  lastJson = JSON.stringify(data, null, 2);
+  output.value = lastJson;
+  dlBtn.disabled = false;
+  offsetX = 0; offsetZ = 0; zoom = 1;
+  drawPreview();
+}
+
+function download() {
+  if (!lastJson) return;
+  const custom = document.getElementById("saveName").value.trim();
+  const base = custom || "GBRoadGen_track";
+  const ts = new Date().toISOString().slice(0,19).replace(/[-:T]/g,'');
+  const filename = custom ? `\( {base}.gbsave` : ` \){base}_${ts}.gbsave`;
+
+  const blob = new Blob([lastJson], {type: "application/octet-stream"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+genBtn.onclick = generate;
+dlBtn.onclick = download;
+
+// Parameter sync (same as v10.4)
+const params = [
+  {rangeId: "count-range", numId: "count-number", valId: "val-count", step: 1},
+  {rangeId: "spacing-range", numId: "spacing-number", valId: "val-spacing", step: 0.1},
+  {rangeId: "scale-range", numId: "scale-number", valId: "val-scale", step: 0.1},
+  {rangeId: "curveStrength-range", numId: "curveStrength-number", valId: "val-curve", step: 1},
+  {rangeId: "sharpness-range", numId: "sharpness-number", valId: "val-sharp", step: 1},
+  {rangeId: "hairpinChance-range", numId: "hairpinChance-number", valId: "val-hairpin", step: 1},
+  {rangeId: "smoothness-range", numId: "smoothness-number", valId: "val-smooth", step: 1},
+  {rangeId: "straightBias-range", numId: "straightBias-number", valId: "val-straight", step: 1}
+];
+
+params.forEach(p => {
+  const range = document.getElementById(p.rangeId);
+  const num = document.getElementById(p.numId);
+  const valSpan = document.getElementById(p.valId);
+
+  range.oninput = () => {
+    num.value = range.value;
+    valSpan.textContent = parseFloat(range.value).toFixed(p.step === 0.1 ? 1 : 0);
+  };
+
+  num.oninput = num.onchange = () => {
+    let v = parseFloat(num.value);
+    if (isNaN(v)) v = parseFloat(range.value);
+    v = Math.max(parseFloat(range.min), Math.min(parseFloat(range.max), v));
+    range.value = v;
+    num.value = v.toFixed(p.step === 0.1 ? 1 : 0);
+    valSpan.textContent = v.toFixed(p.step === 0.1 ? 1 : 0);
+  };
+});
+
+// Initial
+generate();
+
+</script>
+</body>
+</html>
